@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 // 人物データの型定義
-intl interface Person {
+interface Person {
   id: string;
   name: string;
   relationship: string | null;
