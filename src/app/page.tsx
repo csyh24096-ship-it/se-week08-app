@@ -79,7 +79,7 @@ export default function Home() {
   };
 
   // 3. 認証処理（サインアップ・ログイン）
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -96,30 +96,40 @@ export default function Home() {
 
     setIsSubmitting(true);
 
-    if (isSignUp) {
-      // 新規アカウント作成（サインアップ）
-      const { error } = await supabase.auth.signUp({
-        email: authEmail,
-        password: authPassword,
-      });
-      if (error) {
-        setErrorMessage("アカウント作成に失敗しました: " + error.message);
-      } else {
-        setSuccessMessage("アカウントを作成しました！メール認証（設定されている場合）を行うか、そのままログインしてください。");
+    try {
+      // ★【修正ポイント】現在ログインしているユーザーの情報を確実に取得します
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        setErrorMessage("ログインセッションが切れています。もう一度ログインし直してください。");
+        setIsSubmitting(false);
+        return;
       }
-    } else {
-      // ログイン処理
-      const { error } = await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password: authPassword,
-      });
+
+      // ★【修正ポイント】user_id を明示的に指定してインサートします
+      const { error } = await supabase
+        .from("people")
+        .insert([
+          { 
+            name: name.trim(), 
+            relationship: relationship.trim() || null,
+            user_id: currentUser.id // 👈 ログイン中のユーザーIDをセットする
+          }
+        ]);
+
       if (error) {
-        setErrorMessage("ログインに失敗しました。メールアドレスまたはパスワードが違います。");
+        setErrorMessage("データベースへの登録に失敗しました: " + error.message);
       } else {
-        setSuccessMessage("ログインしました！");
+        setSuccessMessage(`${name} さんを新しく登録しました！`);
+        setName("");
+        setRelationship("");
+        await fetchPeople(); // 一覧を更新
       }
+    } catch (err) {
+      setErrorMessage("予期せぬエラーが発生しました。");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   // 4. ログアウト処理
@@ -129,7 +139,7 @@ export default function Home() {
   };
 
   // 5. 人物の登録処理
-  const handlePersonSubmit = async (e: React.FormEvent) => {
+  const handlePersonSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
