@@ -96,6 +96,31 @@ export default function Home() {
 
     setIsSubmitting(true);
 
+    
+  };
+
+  // 4. ログアウト処理
+  const handleSignOut = async () => {
+    setErrorMessage(null);
+    await supabase.auth.signOut();
+    setSuccessMessage("ログアウトしました。");
+  };
+
+  // 5. 人物の登録処理
+  const handlePersonSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    // 【方針4】ユーザー入力の検証（バリデーション）
+    if (!name.trim()) {
+      setErrorMessage("名前は必須項目です。");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // user_idカラムには、SQLのDEFAULT設定により自動的に「現在ログイン中のユーザーID」が入ります
     try {
       // ★【修正ポイント】現在ログインしているユーザーの情報を確実に取得します
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -130,43 +155,6 @@ export default function Home() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // 4. ログアウト処理
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setSuccessMessage("ログアウトしました。");
-  };
-
-  // 5. 人物の登録処理
-  const handlePersonSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    // 【方針4】ユーザー入力の検証（バリデーション）
-    if (!name.trim()) {
-      setErrorMessage("名前は必須項目です。");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    // user_idカラムには、SQLのDEFAULT設定により自動的に「現在ログイン中のユーザーID」が入ります
-    const { error } = await supabase
-      .from("people")
-      .insert([{ name: name.trim(), relationship: relationship.trim() || null }]);
-
-    if (error) {
-      setErrorMessage("データベースへの登録に失敗しました: " + error.message);
-    } else {
-      setSuccessMessage(`${name} さんを新しく登録しました！`);
-      setName("");
-      setRelationship("");
-      await fetchPeople();
-    }
-    setIsSubmitting(false);
-  };
 
   // ローディング中の画面表示
   if (isLoading && !user) {
