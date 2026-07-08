@@ -96,7 +96,30 @@ export default function Home() {
 
     setIsSubmitting(true);
 
-    
+    try {
+      if (isSignUp) {
+        // ① 新規アカウント作成処理
+        const { error } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+        });
+        if (error) throw error;
+        setSuccessMessage("アカウントを作成しました！");
+      } else {
+        // ② ログイン処理
+        const { error } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        });
+        if (error) throw error;
+        setSuccessMessage("ログインしました！");
+      }
+    } catch (error: any) {
+      setErrorMessage("認証エラー: " + (error.message || "予期せぬエラーが発生しました。"));
+    } finally {
+      // ③ 成功しても失敗しても、必ず「処理中」を解除する
+      setIsSubmitting(false);
+    }
   };
 
   // 4. ログアウト処理
@@ -112,7 +135,7 @@ export default function Home() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    // 【方針4】ユーザー入力の検証（バリデーション）
+    // ユーザー入力の検証
     if (!name.trim()) {
       setErrorMessage("名前は必須項目です。");
       return;
@@ -120,7 +143,6 @@ export default function Home() {
 
     setIsSubmitting(true);
 
-    // user_idカラムには、SQLのDEFAULT設定により自動的に「現在ログイン中のユーザーID」が入ります
     try {
       // ★【修正ポイント】現在ログインしているユーザーの情報を確実に取得します
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -155,6 +177,7 @@ export default function Home() {
     } finally {
       setIsSubmitting(false);
     }
+  };
 
   // ローディング中の画面表示
   if (isLoading && !user) {
