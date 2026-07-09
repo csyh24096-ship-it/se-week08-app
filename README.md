@@ -127,6 +127,11 @@ CREATE POLICY "Users can delete their own people" ON public.people FOR DELETE US
 -- 2. memos（メモ）テーブルの削除権限を追加
 CREATE POLICY "Users can delete their own memos" ON public.memos FOR DELETE USING (auth.uid() = user_id);
 
+### 誕生日設定機能のためのSQLコード
+
+-- peopleテーブルにbirthday（日付型・任意）カラムを追加
+ALTER TABLE public.people ADD COLUMN birthday DATE;
+
 ## 現在動く機能
 
 [〇] テストユーザーでサインアップ・ログインができ、自分専用のダッシュボードが表示されること。
@@ -141,10 +146,10 @@ CREATE POLICY "Users can delete their own memos" ON public.memos FOR DELETE USIN
 
 ## 起動方法
 
-npm run dev
+Vercelで公開されているため、起動は必要ない。URLへ接続することで動作確認が可能。
 
 ## 動作確認
 
-1.ブラウザでhttp://localhost:3000 を開く
+1.ブラウザでhttps://se-week08-app.vercel.app/を開く
 2.名前と関係を入力して登録
 3.一覧に表示されることを確認
