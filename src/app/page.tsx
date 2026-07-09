@@ -31,6 +31,9 @@ export default function Home() {
   
   const [memoInputs, setMemoInputs] = useState<{ [key: string]: string }>({});
 
+  // ★ 新規追加：現在選択されている関係性タブ（デフォルトは "ALL" = すべて）
+  const [selectedTab, setSelectedTab] = useState<string>("ALL");
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -185,7 +188,6 @@ export default function Home() {
     }
   };
 
-  // ★ 新規追加：人物を削除する処理
   const handleDeletePerson = async (personId: string, personName: string) => {
     if (!confirm(`${personName} さんを削除しますか？\n（登録されているメモもすべて削除されます）`)) return;
 
@@ -203,6 +205,8 @@ export default function Home() {
         setErrorMessage("人物の削除に失敗しました: " + error.message);
       } else {
         setSuccessMessage(`${personName} さんのデータを削除しました。`);
+        // 削除した人物の関係性タブを開いていた場合、データが消えてタブ自体もなくなる可能性があるため
+        // 安全のために一覧を再取得した後は "ALL" タブに戻すか状態を維持する
         await fetchPeople();
       }
     } catch (err) {
@@ -212,7 +216,6 @@ export default function Home() {
     }
   };
 
-  // ★ 新規追加：メモを削除する処理
   const handleDeleteMemo = async (memoId: string) => {
     if (!confirm("このメモを削除しますか？")) return;
 
@@ -236,6 +239,23 @@ export default function Home() {
       setIsSubmitting(false);
     }
   };
+
+  // 💡 登録データから存在するユニークな関係性（重複なし）を自動抽出する
+  const uniqueRelationships = Array.from(
+    new Set(people.map((p) => p.relationship).filter(Boolean))
+  ) as string[];
+
+  // 💡 選択されたタブに応じて、画面に表示する人物をフィルタリングする
+  const filteredPeople = selectedTab === "ALL"
+    ? people
+    : people.filter((p) => p.relationship === selectedTab);
+
+  // もし選択していた関係性のデータが削除等で0件になったら、自動的に「すべて」タブに戻す
+  useEffect(() => {
+    if (selectedTab !== "ALL" && !uniqueRelationships.includes(selectedTab)) {
+      setSelectedTab("ALL");
+    }
+  }, [people, selectedTab, uniqueRelationships]);
 
   if (isLoading && !user) {
     return (
@@ -304,7 +324,7 @@ export default function Home() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">関係性（任意）</label>
-                  <input type="text" value={relationship} onChange={(e) => setRelationship(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  <input type="text" placeholder="例：家族、友人、仕事" value={relationship} onChange={(e) => setRelationship(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
                 <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md disabled:bg-gray-400">
                   {isSubmitting ? "登録中..." : "登録する"}
@@ -314,16 +334,51 @@ export default function Home() {
 
             <div className="md:col-span-2">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">あなたが登録した人物一覧</h2>
-              {people.length === 0 ? (
-                <div className="bg-white p-8 rounded-lg shadow-sm text-center">
-                  <p className="text-gray-500 text-sm">データはまだありません。</p>
+              
+              {people.length > 0 && (
+                /* ★ 新規追加：関係性別切り替えタブUI */
+                <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-3">
+                  <button
+                    onClick={() => setSelectedTab("ALL")}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
+                      selectedTab === "ALL"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    すべて ({people.length})
+                  </button>
+                  {uniqueRelationships.map((rel) => {
+                    const count = people.filter((p) => p.relationship === rel).length;
+                    return (
+                      <button
+                        key={rel}
+                        onClick={() => setSelectedTab(rel)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
+                          selectedTab === rel
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
+                      >
+                        {rel} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {filteredPeople.length === 0 ? (
+                <div className="bg-white p-8 rounded-lg shadow-sm text-center border border-gray-200">
+                  <p className="text-gray-500 text-sm">
+                    {selectedTab === "ALL" ? "データはまだありません。" : "この関係性の人物は登録されていません。"}
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-6">
-                  {people.map((person) => (
+                  {/* 💡 表示対象を filteredPeople に変更 */}
+                  {filteredPeople.map((person) => (
                     <div key={person.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex flex-col">
                       
-                      {/* 人物の基本情報 ＋ 削除ボタン */}
                       <div className="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
                         <div>
                           <h3 className="text-lg font-bold text-gray-900">{person.name}</h3>
@@ -333,7 +388,6 @@ export default function Home() {
                             </span>
                           )}
                         </div>
-                        {/* 人物削除ボタン */}
                         <button
                           onClick={() => handleDeletePerson(person.id, person.name)}
                           disabled={isSubmitting}
@@ -343,15 +397,13 @@ export default function Home() {
                         </button>
                       </div>
 
-                      {/* メモ一覧の表示 ＋ メモ個別削除ボタン */}
                       <div className="mb-4">
                         <h4 className="text-sm font-semibold text-gray-500 mb-2">📌 メモ</h4>
                         {person.memos && person.memos.length > 0 ? (
                           <ul className="space-y-2">
                             {person.memos.map((memo) => (
-                              <li key={memo.id} className="group text-sm text-gray-700 bg-gray-50 p-2.5 rounded border border-gray-100 whitespace-pre-wrap flex justify-between items-start gap-4">
+                              <li key={memo.id} className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded border border-gray-100 whitespace-pre-wrap flex justify-between items-start gap-4">
                                 <span className="flex-grow">{memo.content}</span>
-                                {/* メモ削除ボタン */}
                                 <button
                                   onClick={() => handleDeleteMemo(memo.id)}
                                   disabled={isSubmitting}
@@ -367,7 +419,6 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* メモ追加フォーム */}
                       <div className="mt-auto pt-3 flex gap-2">
                         <input
                           type="text"
