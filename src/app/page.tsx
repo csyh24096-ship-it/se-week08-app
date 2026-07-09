@@ -51,15 +51,15 @@ export default function Home() {
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
-      if (user) fetchPeople();
+      if (user) await fetchPeople();
       else setIsLoading(false);
     };
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      if (currentUser) fetchPeople();
+      if (currentUser) await fetchPeople();
       else {
         setPeople([]);
         setIsLoading(false);
@@ -70,9 +70,6 @@ export default function Home() {
   }, []);
 
   const fetchPeople = async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    
     const { data, error } = await supabase
       .from("people")
       .select("*, memos(*)")
@@ -126,6 +123,7 @@ export default function Home() {
 
   const handleSignOut = async () => {
     setErrorMessage(null);
+    setSuccessMessage(null);
     await supabase.auth.signOut();
     setSuccessMessage("ログアウトしました。");
   };
@@ -155,13 +153,14 @@ export default function Home() {
         }]);
 
       if (error) {
-        setErrorMessage("登録に失敗しました: " + error.message + " (詳細: " + (error.details || "なし") + ")");
+        setErrorMessage("登録に失敗しました: " + error.message);
       } else {
-        setSuccessMessage(`${name} さんを新しく登録しました！`);
         setName("");
         setRelationship("");
         setBirthday("");
+        // 先にデータを再取得して画面を更新してから、サクセスメッセージを出す
         await fetchPeople();
+        setSuccessMessage(`${name} さんを新しく登録しました！`);
       }
     } catch (err: any) {
       setErrorMessage("予期せぬエラーが発生しました: " + err.message);
@@ -196,6 +195,7 @@ export default function Home() {
 
     setIsSubmitting(true);
     try {
+      // 1. Supabaseのデータを更新
       const { error } = await supabase
         .from("people")
         .update({
@@ -206,11 +206,14 @@ export default function Home() {
         .eq("id", personId);
 
       if (error) {
-        setErrorMessage("更新に失敗しました: " + error.message + " (詳細: " + (error.details || "なし") + ")");
+        setErrorMessage("更新に失敗しました: " + error.message);
       } else {
-        setSuccessMessage("情報を更新しました！");
+        // 2. 編集モードを先に終了
         setEditingPersonId(null);
+        // 3. データを確実に再取得して画面を最新状態にする
         await fetchPeople();
+        // 4. 最後に成功メッセージを表示
+        setSuccessMessage("情報を更新しました！");
       }
     } catch (err: any) {
       setErrorMessage("予期せぬエラーが発生しました: " + err.message);
@@ -267,8 +270,8 @@ export default function Home() {
       if (error) {
         setErrorMessage("人物の削除に失敗しました: " + error.message);
       } else {
-        setSuccessMessage(`${personName} さんのデータを削除しました。`);
         await fetchPeople();
+        setSuccessMessage(`${personName} さんのデータを削除しました。`);
       }
     } catch (err) {
       setErrorMessage("予期せぬエラーが発生しました。");
@@ -580,7 +583,6 @@ export default function Home() {
 
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-5">
-                {/* ★ 修正：タイトルを「📅 カレンダー」のみに変更 */}
                 <h2 className="text-lg font-bold text-gray-800">📅 カレンダー</h2>
                 <div className="flex items-center gap-2">
                   <button onClick={() => changeMonth(-1)} className="p-1.5 border rounded-md hover:bg-gray-50 text-sm font-bold">◀</button>
