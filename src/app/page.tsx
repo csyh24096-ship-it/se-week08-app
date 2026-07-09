@@ -15,6 +15,7 @@ interface Person {
   id: string;
   name: string;
   relationship: string | null;
+  birthday: string | null; // ★ 新規追加：誕生日
   created_at: string;
   memos?: Memo[];
 }
@@ -28,11 +29,11 @@ export default function Home() {
   const [people, setPeople] = useState<Person[]>([]);
   const [name, setName] = useState("");
   const [relationship, setRelationship] = useState("");
+  // ★ 新規追加：誕生日の入力状態管理
+  const [birthday, setBirthday] = useState("");
   
   const [memoInputs, setMemoInputs] = useState<{ [key: string]: string }>({});
   const [selectedTab, setSelectedTab] = useState<string>("ALL");
-
-  // ★ 新規追加：検索キーワードの状態管理
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(true);
@@ -138,9 +139,15 @@ export default function Home() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
+      // ★ 修正：birthday を含めてインサートする（空文字なら null にする）
       const { error } = await supabase
         .from("people")
-        .insert([{ name: name.trim(), relationship: relationship.trim() || null, user_id: currentUser.id }]);
+        .insert([{ 
+          name: name.trim(), 
+          relationship: relationship.trim() || null, 
+          birthday: birthday || null,
+          user_id: currentUser.id 
+        }]);
 
       if (error) {
         setErrorMessage("登録に失敗しました: " + error.message);
@@ -148,6 +155,7 @@ export default function Home() {
         setSuccessMessage(`${name} さんを新しく登録しました！`);
         setName("");
         setRelationship("");
+        setBirthday(""); // 入力欄をクリア
         await fetchPeople();
       }
     } catch (err) {
@@ -243,23 +251,23 @@ export default function Home() {
     new Set(people.map((p) => p.relationship).filter(Boolean))
   ) as string[];
 
-  // ★ 修正・拡張：関係性タブ ＋ 検索キーワードの両方で人物をフィルタリングする
   const filteredPeople = people.filter((person) => {
-    // 1. 関係性タブの条件チェック
     const matchesTab = selectedTab === "ALL" || person.relationship === selectedTab;
-
-    // 2. 検索キーワードの条件チェック
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return matchesTab; // キーワードが空ならタブの条件だけで判定
+    if (!query) return matchesTab;
 
-    // 人物名にキーワードが含まれるか
     const matchesName = person.name.toLowerCase().includes(query);
-    // メモ一覧のなかにキーワードが含まれるメモがあるか
     const matchesMemo = person.memos?.some((m) => m.content.toLowerCase().includes(query)) ?? false;
 
-    // タブの条件を満たし、かつ（名前またはメモにヒットする）データを残す
     return matchesTab && (matchesName || matchesMemo);
   });
+
+  // ★ 新規追加：YYYY-MM-DD の文字列を「〇〇年〇月〇日」の生年月日形式に変換するヘルパー関数
+  const formatBirthday = (dateStr: string | null) => {
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split("-");
+    return `${year}年${parseInt(month)}月${parseInt(day)}日`;
+  };
 
   useEffect(() => {
     if (selectedTab !== "ALL" && !uniqueRelationships.includes(selectedTab)) {
@@ -336,6 +344,16 @@ export default function Home() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">関係性（任意）</label>
                   <input type="text" placeholder="例：家族、友人、仕事" value={relationship} onChange={(e) => setRelationship(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
+                {/* ★ 新規追加：誕生日入力欄（カレンダー形式） */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">誕生日（任意）</label>
+                  <input 
+                    type="date" 
+                    value={birthday} 
+                    onChange={(e) => setBirthday(e.target.value)} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:border-blue-500" 
+                  />
+                </div>
                 <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md disabled:bg-gray-400">
                   {isSubmitting ? "登録中..." : "登録する"}
                 </button>
@@ -345,7 +363,6 @@ export default function Home() {
             <div className="md:col-span-2">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">あなたが登録した人物一覧</h2>
               
-              {/* ★ 新規追加：キーワード検索窓 UI */}
               <div className="mb-4">
                 <input
                   type="text"
@@ -402,11 +419,19 @@ export default function Home() {
                       
                       <div className="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-900">{person.name}</h3>
-                          {person.relationship && (
-                            <span className="inline-block mt-1 bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                              {person.relationship}
-                            </span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-lg font-bold text-gray-900">{person.name}</h3>
+                            {person.relationship && (
+                              <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
+                                {person.relationship}
+                              </span>
+                            )}
+                          </div>
+                          {/* ★ 新規追加：誕生日の生年月日形式での出力表示 */}
+                          {person.birthday && (
+                            <p className="text-xs text-gray-600 mt-1 font-medium bg-amber-50 text-amber-800 px-2 py-0.5 rounded w-fit">
+                              🎂 {formatBirthday(person.birthday)}
+                            </p>
                           )}
                         </div>
                         <button
