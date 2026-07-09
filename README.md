@@ -119,6 +119,14 @@ CREATE POLICY "Users can insert their own memos" ON public.memos FOR INSERT WITH
 -- 4. 大元のアクセス権限（GRANT）を付与（前回の permission denied 対策）
 GRANT ALL ON TABLE public.memos TO authenticated, anon;
 
+### 削除機能のための削除権限付与のSQLコード
+
+-- 1. people（人物）テーブルの削除権限を追加
+CREATE POLICY "Users can delete their own people" ON public.people FOR DELETE USING (auth.uid() = user_id);
+
+-- 2. memos（メモ）テーブルの削除権限を追加
+CREATE POLICY "Users can delete their own memos" ON public.memos FOR DELETE USING (auth.uid() = user_id);
+
 ## 現在動く機能
 
 [〇] テストユーザーでサインアップ・ログインができ、自分専用のダッシュボードが表示されること。
