@@ -143,14 +143,16 @@ export default function Home() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
-      const { error } = await supabase
+      // 新規登録時に、追加した行のデータをそのまま取得（select）するよう指定
+      const { data, error } = await supabase
         .from("people")
         .insert([{ 
           name: name.trim(), 
           relationship: relationship.trim() || null, 
           birthday: birthday || null,
           user_id: currentUser.id 
-        }]);
+        }])
+        .select("*, memos(*)");
 
       if (error) {
         setErrorMessage("登録に失敗しました: " + error.message);
@@ -158,8 +160,13 @@ export default function Home() {
         setName("");
         setRelationship("");
         setBirthday("");
-        // 先にデータを再取得して画面を更新してから、サクセスメッセージを出す
-        await fetchPeople();
+        
+        // 画面の状態をローカルで即時更新（再通信を待たずに反映）
+        if (data && data[0]) {
+          setPeople(prev => [data[0], ...prev]);
+        } else {
+          await fetchPeople();
+        }
         setSuccessMessage(`${name} さんを新しく登録しました！`);
       }
     } catch (err: any) {
@@ -195,24 +202,43 @@ export default function Home() {
 
     setIsSubmitting(true);
     try {
-      // 1. Supabaseのデータを更新
-      const { error } = await supabase
+      // 1. Supabaseのデータを更新し、更新後のデータを即座に取得 (.select() を追加)
+      const { data, error } = await supabase
         .from("people")
         .update({
           name: editName.trim(),
           relationship: editRelationship.trim() || null,
           birthday: editBirthday || null,
         })
-        .eq("id", personId);
+        .eq("id", personId)
+        .select();
 
       if (error) {
         setErrorMessage("更新に失敗しました: " + error.message);
       } else {
-        // 2. 編集モードを先に終了
+        // 2. 編集モードを終了
         setEditingPersonId(null);
-        // 3. データを確実に再取得して画面を最新状態にする
-        await fetchPeople();
-        // 4. 最後に成功メッセージを表示
+
+        // 3. ローカルのpeople状態を直接上書き更新（これで確実に画面が切り替わります）
+        if (data && data[0]) {
+          setPeople(prev => prev.map(person => {
+            if (person.id === personId) {
+              // メモ(memos)データが消えないように引き継ぎつつ、基本情報を更新
+              return {
+                ...person,
+                name: data[0].name,
+                relationship: data[0].relationship,
+                birthday: data[0].birthday
+              };
+            }
+            return person;
+          }));
+        } else {
+          // 万が一データが取れなかった場合のフォールバック
+          await fetchPeople();
+        }
+
+        // 4. 成功メッセージを表示
         setSuccessMessage("情報を更新しました！");
       }
     } catch (err: any) {
@@ -233,19 +259,34 @@ export default function Home() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("memos")
         .insert([{ 
           person_id: personId, 
           content: content.trim(), 
           user_id: currentUser.id 
-        }]);
+        }])
+        .select();
 
       if (error) {
         setErrorMessage("メモの追加に失敗しました: " + error.message);
       } else {
         setMemoInputs({ ...memoInputs, [personId]: "" });
-        await fetchPeople();
+        
+        if (data && data[0]) {
+          setPeople(prev => prev.map(person => {
+            if (person.id === personId) {
+              const currentMemos = person.memos || [];
+              return {
+                ...person,
+                memos: [...currentMemos, data[0]]
+              };
+            }
+            return person;
+          }));
+        } else {
+          await fetchPeople();
+        }
       }
     } catch (err) {
       setErrorMessage("予期せぬエラーが発生しました。");
@@ -270,7 +311,8 @@ export default function Home() {
       if (error) {
         setErrorMessage("人物の削除に失敗しました: " + error.message);
       } else {
-        await fetchPeople();
+        // ローカルから即時削除反映
+        setPeople(prev => prev.filter(p => p.id !== personId));
         setSuccessMessage(`${personName} さんのデータを削除しました。`);
       }
     } catch (err) {
@@ -295,7 +337,11 @@ export default function Home() {
       if (error) {
         setErrorMessage("メモの削除に失敗しました: " + error.message);
       } else {
-        await fetchPeople();
+        // ローカルからメモを即時削除反映
+        setPeople(prev => prev.map(person => ({
+          ...person,
+          memos: person.memos?.filter(m => m.id !== memoId) || []
+        })));
       }
     } catch (err) {
       setErrorMessage("予期せぬエラーが発生しました。");
