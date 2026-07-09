@@ -40,7 +40,6 @@ export default function Home() {
   const [editRelationship, setEditRelationship] = useState("");
   const [editBirthday, setEditBirthday] = useState("");
 
-  // ★ 新規追加：カレンダー表示用の年月状態管理（初期値は現在の年月）
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
 
   const [isLoading, setIsLoading] = useState(true);
@@ -323,26 +322,21 @@ export default function Home() {
     return `${year}年${parseInt(month)}月${parseInt(day)}日`;
   };
 
-  // ★ 新規追加：カレンダーロジック用の関数群
   const getCalendarDays = () => {
     const year = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
     
-    // 月の最初の日と最後の日
     const firstDayOfMonth = new Date(year, month, 1);
     const lastDayOfMonth = new Date(year, month + 1, 0);
     
-    // 最初の日が何曜日か (0:日〜6:土)
     const startDayOfWeek = firstDayOfMonth.getDay();
     const totalDays = lastDayOfMonth.getDate();
     
     const days: (number | null)[] = [];
     
-    // 空白埋め（前の月のハミ出し分）
     for (let i = 0; i < startDayOfWeek; i++) {
       days.push(null);
     }
-    // 当月の日付
     for (let i = 1; i <= totalDays; i++) {
       days.push(i);
     }
@@ -350,7 +344,6 @@ export default function Home() {
     return days;
   };
 
-  // 月を前後に動かす
   const changeMonth = (offset: number) => {
     const nextDate = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + offset, 1);
     setCurrentCalendarDate(nextDate);
@@ -374,7 +367,7 @@ export default function Home() {
     <main className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8 border-b pb-4 border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">人物メモアプリ</h1>
+          <h1 className="text-2xl font-bold text-gray-900">身近な人 メモアプリ</h1>
           {user && (
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600 bg-gray-200 px-3 py-1 rounded">👤 {user.email}</span>
@@ -419,88 +412,35 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-fit">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">新しい人物を登録</h2>
-              <form onSubmit={handlePersonSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">名前 *</label>
-                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">関係性（任意）</label>
-                  <input type="text" placeholder="例：家族、友人、仕事" value={relationship} onChange={(e) => setRelationship(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">誕生日（任意）</label>
-                  <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:border-blue-500" />
-                </div>
-                <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md disabled:bg-gray-400">
-                  {isSubmitting ? "登録中..." : "登録する"}
-                </button>
-              </form>
-            </div>
-
-            <div className="md:col-span-2 space-y-8">
-              
-              {/* ★ 新規追加：全員の誕生日を表示するカレンダーセクション */}
-              <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-gray-800">📅 誕生日カレンダー（登録者全員）</h2>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => changeMonth(-1)} className="p-1.5 border rounded-md hover:bg-gray-50 text-sm font-bold">◀</button>
-                    <span className="text-sm font-bold text-gray-700 min-w-[90px] text-center">
-                      {currentCalendarDate.getFullYear()}年 {currentCalendarDate.getMonth() + 1}月
-                    </span>
-                    <button onClick={() => changeMonth(1)} className="p-1.5 border rounded-md hover:bg-gray-50 text-sm font-bold">▶</button>
+          /* ★ 修正：レイアウト構造を縦並び（下部カレンダー配置）に変更 */
+          <div className="space-y-10">
+            
+            {/* 上部：登録フォーム ＆ 人物一覧 の2カラム構成 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* 左側：新規登録フォーム */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-fit">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">新しい人物を登録</h2>
+                <form onSubmit={handlePersonSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">名前 *</label>
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                   </div>
-                </div>
-
-                {/* 曜日ヘッダー */}
-                <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500 mb-1">
-                  <div className="text-red-500 py-1 bg-gray-50 rounded">日</div>
-                  <div className="py-1 bg-gray-50 rounded">月</div>
-                  <div className="py-1 bg-gray-50 rounded">火</div>
-                  <div className="py-1 bg-gray-50 rounded">水</div>
-                  <div className="py-1 bg-gray-50 rounded">木</div>
-                  <div className="py-1 bg-gray-50 rounded">金</div>
-                  <div className="text-blue-500 py-1 bg-gray-50 rounded">土</div>
-                </div>
-
-                {/* カレンダーマス目 */}
-                <div className="grid grid-cols-7 gap-1">
-                  {getCalendarDays().map((day, idx) => {
-                    if (day === null) {
-                      return <div key={`empty-${idx}`} className="bg-gray-50/50 min-h-[65px] rounded-md border border-gray-100"></div>;
-                    }
-
-                    // この日に誕生日が該当する人を全員抽出する (月と日だけ一致すればOK)
-                    const targetMonth = String(currentCalendarDate.getMonth() + 1).padStart(2, "0");
-                    const targetDay = String(day).padStart(2, "0");
-                    const matchingPeople = people.filter(p => {
-                      if (!p.birthday) return false;
-                      const [, m, d] = p.birthday.split("-");
-                      return m === targetMonth && d === targetDay;
-                    });
-
-                    return (
-                      <div key={`day-${day}`} className="bg-white min-h-[65px] p-1 rounded-md border border-gray-200 flex flex-col justify-between hover:border-blue-300 transition">
-                        <span className="text-xs font-bold text-gray-600 block">{day}</span>
-                        <div className="mt-1 space-y-0.5 flex-grow overflow-y-auto max-h-[45px] scrollbar-thin">
-                          {matchingPeople.map(p => (
-                            <div key={p.id} className="text-[10px] leading-tight bg-amber-100 border border-amber-200 text-amber-800 rounded px-1 py-0.5 font-medium truncate" title={`${p.name} (${formatBirthday(p.birthday)})`}>
-                              🎂 {p.name}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">関係性（任意）</label>
+                    <input type="text" placeholder="例：家族、友人、仕事" value={relationship} onChange={(e) => setRelationship(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">誕生日（任意）</label>
+                    <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:border-blue-500" />
+                  </div>
+                  <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md disabled:bg-gray-400">
+                    {isSubmitting ? "登録中..." : "登録する"}
+                  </button>
+                </form>
               </div>
 
-              {/* 人物一覧（既存コンポーネント） */}
-              <div>
+              {/* 右側：人物一覧 */}
+              <div className="md:col-span-2">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">あなたが登録した人物一覧</h2>
                 
                 <div className="mb-4">
@@ -546,7 +486,7 @@ export default function Home() {
                       {searchQuery.trim() 
                         ? "キーワードに一致するデータは見つかりませんでした。" 
                         : selectedTab === "ALL" ? "データはまだありません。" : "この関係性の人物は登録されていません。"}
-                  </p>
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-6">
@@ -640,8 +580,63 @@ export default function Home() {
                   </div>
                 )}
               </div>
-
             </div>
+
+            {/* ★ 修正：カレンダーセクションを画面下部（横幅いっぱいのエリア）へ移動 */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-lg font-bold text-gray-800">📅 誕生日カレンダー（登録者全員）</h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => changeMonth(-1)} className="p-1.5 border rounded-md hover:bg-gray-50 text-sm font-bold">◀</button>
+                  <span className="text-sm font-bold text-gray-700 min-w-[90px] text-center">
+                    {currentCalendarDate.getFullYear()}年 {currentCalendarDate.getMonth() + 1}月
+                  </span>
+                  <button onClick={() => changeMonth(1)} className="p-1.5 border rounded-md hover:bg-gray-50 text-sm font-bold">▶</button>
+                </div>
+              </div>
+
+              {/* 曜日ヘッダー */}
+              <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500 mb-1">
+                <div className="text-red-500 py-1 bg-gray-50 rounded">日</div>
+                <div className="py-1 bg-gray-50 rounded">月</div>
+                <div className="py-1 bg-gray-50 rounded">火</div>
+                <div className="py-1 bg-gray-50 rounded">水</div>
+                <div className="py-1 bg-gray-50 rounded">木</div>
+                <div className="py-1 bg-gray-50 rounded">金</div>
+                <div className="text-blue-500 py-1 bg-gray-50 rounded">土</div>
+              </div>
+
+              {/* カレンダーマス目 */}
+              <div className="grid grid-cols-7 gap-1.5">
+                {getCalendarDays().map((day, idx) => {
+                  if (day === null) {
+                    return <div key={`empty-${idx}`} className="bg-gray-50/50 min-h-[75px] rounded-md border border-gray-100"></div>;
+                  }
+
+                  const targetMonth = String(currentCalendarDate.getMonth() + 1).padStart(2, "0");
+                  const targetDay = String(day).padStart(2, "0");
+                  const matchingPeople = people.filter(p => {
+                    if (!p.birthday) return false;
+                    const [, m, d] = p.birthday.split("-");
+                    return m === targetMonth && d === targetDay;
+                  });
+
+                  return (
+                    <div key={`day-${day}`} className="bg-white min-h-[75px] p-1.5 rounded-md border border-gray-200 flex flex-col justify-between hover:border-blue-300 transition">
+                      <span className="text-xs font-bold text-gray-600 block">{day}</span>
+                      <div className="mt-1 space-y-0.5 flex-grow overflow-y-auto max-h-[50px] scrollbar-thin">
+                        {matchingPeople.map(p => (
+                          <div key={p.id} className="text-[10px] leading-tight bg-amber-100 border border-amber-200 text-amber-800 rounded px-1.5 py-0.5 font-medium truncate" title={`${p.name} (${formatBirthday(p.birthday)})`}>
+                            🎂 {p.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         )}
       </div>
