@@ -146,8 +146,8 @@ ALTER TABLE public.people ADD COLUMN birthday DATE;
 
 ## 起動方法
 
-Vercelで公開されているため、起動は必要ない。URLへ接続することで動作確認が可能。
-
+Vercelで公開されているため、URLへ接続することで動作確認が可能。
+ローカルでの起動はnpm run devを実行することで可能。
 ## 動作確認
 
 1.ブラウザでhttps://se-week08-app.vercel.app/ を開く
