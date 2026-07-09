@@ -15,7 +15,7 @@ interface Person {
   id: string;
   name: string;
   relationship: string | null;
-  birthday: string | null; // ★ 新規追加：誕生日
+  birthday: string | null;
   created_at: string;
   memos?: Memo[];
 }
@@ -29,12 +29,17 @@ export default function Home() {
   const [people, setPeople] = useState<Person[]>([]);
   const [name, setName] = useState("");
   const [relationship, setRelationship] = useState("");
-  // ★ 新規追加：誕生日の入力状態管理
   const [birthday, setBirthday] = useState("");
   
   const [memoInputs, setMemoInputs] = useState<{ [key: string]: string }>({});
   const [selectedTab, setSelectedTab] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // ★ 新規追加：編集モードに関する状態管理
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRelationship, setEditRelationship] = useState("");
+  const [editBirthday, setEditBirthday] = useState("");
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,7 +144,6 @@ export default function Home() {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return;
 
-      // ★ 修正：birthday を含めてインサートする（空文字なら null にする）
       const { error } = await supabase
         .from("people")
         .insert([{ 
@@ -155,7 +159,59 @@ export default function Home() {
         setSuccessMessage(`${name} さんを新しく登録しました！`);
         setName("");
         setRelationship("");
-        setBirthday(""); // 入力欄をクリア
+        setBirthday("");
+        await fetchPeople();
+      }
+    } catch (err) {
+      setErrorMessage("予期せぬエラーが発生しました。");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ★ 新規追加：編集モードを開始する処理
+  const handleEditStart = (person: Person) => {
+    setEditingPersonId(person.id);
+    setEditName(person.name);
+    setEditRelationship(person.relationship || "");
+    setEditBirthday(person.birthday || "");
+  };
+
+  // ★ 新規追加：編集をキャンセルする処理
+  const handleEditCancel = () => {
+    setEditingPersonId(null);
+    setEditName("");
+    setEditRelationship("");
+    setEditBirthday("");
+  };
+
+  // ★ 新規追加：編集内容を保存（Update）する処理
+  const handleEditSubmit = async (e: React.FormEvent, personId: string) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    if (!editName.trim()) {
+      setErrorMessage("名前は必須項目です。");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("people")
+        .update({
+          name: editName.trim(),
+          relationship: editRelationship.trim() || null,
+          birthday: editBirthday || null,
+        })
+        .eq("id", personId);
+
+      if (error) {
+        setErrorMessage("更新に失敗しました: " + error.message);
+      } else {
+        setSuccessMessage("情報を更新しました！");
+        setEditingPersonId(null); // 編集モード終了
         await fetchPeople();
       }
     } catch (err) {
@@ -262,7 +318,6 @@ export default function Home() {
     return matchesTab && (matchesName || matchesMemo);
   });
 
-  // ★ 新規追加：YYYY-MM-DD の文字列を「〇〇年〇月〇日」の生年月日形式に変換するヘルパー関数
   const formatBirthday = (dateStr: string | null) => {
     if (!dateStr) return "";
     const [year, month, day] = dateStr.split("-");
@@ -344,15 +399,9 @@ export default function Home() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">関係性（任意）</label>
                   <input type="text" placeholder="例：家族、友人、仕事" value={relationship} onChange={(e) => setRelationship(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
                 </div>
-                {/* ★ 新規追加：誕生日入力欄（カレンダー形式） */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">誕生日（任意）</label>
-                  <input 
-                    type="date" 
-                    value={birthday} 
-                    onChange={(e) => setBirthday(e.target.value)} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:border-blue-500" 
-                  />
+                  <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:border-blue-500" />
                 </div>
                 <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md disabled:bg-gray-400">
                   {isSubmitting ? "登録中..." : "登録する"}
@@ -414,82 +463,124 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-6">
-                  {filteredPeople.map((person) => (
-                    <div key={person.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                      
-                      <div className="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-lg font-bold text-gray-900">{person.name}</h3>
-                            {person.relationship && (
-                              <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                                {person.relationship}
-                              </span>
-                            )}
+                  {filteredPeople.map((person) => {
+                    // 現在このカードが編集モードかどうかを判定
+                    const isEditing = person.id === editingPersonId;
+
+                    return (
+                      <div key={person.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                        
+                        {/* ★ 修正：編集モードと通常表示モードの条件分岐 */}
+                        {isEditing ? (
+                          <form onSubmit={(e) => handleEditSubmit(e, person.id)} className="border-b border-gray-100 pb-4 mb-3 space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">名前 *</label>
+                                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-2 py-1 text-sm border rounded" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">関係性</label>
+                                <input type="text" value={editRelationship} onChange={(e) => setEditRelationship(e.target.value)} className="w-full px-2 py-1 text-sm border rounded" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">誕生日</label>
+                                <input type="date" value={editBirthday} onChange={(e) => setEditBirthday(e.target.value)} className="w-full px-2 py-1 text-sm border rounded text-gray-700" />
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-1">
+                              <button type="button" onClick={handleEditCancel} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium py-1 px-3 rounded transition">
+                                キャンセル
+                              </button>
+                              <button type="submit" disabled={isSubmitting} className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded transition disabled:bg-gray-400">
+                                {isSubmitting ? "保存中..." : "保存する"}
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-lg font-bold text-gray-900">{person.name}</h3>
+                                {person.relationship && (
+                                  <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
+                                    {person.relationship}
+                                  </span>
+                                )}
+                              </div>
+                              {person.birthday && (
+                                <p className="text-xs text-gray-600 mt-1 font-medium bg-amber-50 text-amber-800 px-2 py-0.5 rounded w-fit">
+                                  🎂 {formatBirthday(person.birthday)}
+                                </p>
+                              )}
+                            </div>
+                            {/* 操作ボタン群 */}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEditStart(person)}
+                                className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium py-1 px-2.5 rounded transition"
+                              >
+                                編集
+                              </button>
+                              <button
+                                onClick={() => handleDeletePerson(person.id, person.name)}
+                                disabled={isSubmitting}
+                                className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium py-1 px-2.5 rounded transition disabled:bg-gray-50 disabled:text-gray-400"
+                              >
+                                人物を削除
+                              </button>
+                            </div>
                           </div>
-                          {/* ★ 新規追加：誕生日の生年月日形式での出力表示 */}
-                          {person.birthday && (
-                            <p className="text-xs text-gray-600 mt-1 font-medium bg-amber-50 text-amber-800 px-2 py-0.5 rounded w-fit">
-                              🎂 {formatBirthday(person.birthday)}
-                            </p>
+                        )}
+
+                        {/* メモセクション（編集モード中も確認可能） */}
+                        <div className="mb-4">
+                          <h4 className="text-sm font-semibold text-gray-500 mb-2">📌 メモ</h4>
+                          {person.memos && person.memos.length > 0 ? (
+                            <ul className="space-y-2">
+                              {person.memos.map((memo) => (
+                                <li key={memo.id} className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded border border-gray-100 whitespace-pre-wrap flex justify-between items-start gap-4">
+                                  <span className="flex-grow">{memo.content}</span>
+                                  <button
+                                    onClick={() => handleDeleteMemo(memo.id)}
+                                    disabled={isSubmitting}
+                                    className="text-xs text-gray-400 hover:text-red-600 transition font-medium"
+                                  >
+                                    削除
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-gray-400">メモはまだ登録されていません。</p>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleDeletePerson(person.id, person.name)}
-                          disabled={isSubmitting}
-                          className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium py-1 px-2.5 rounded transition disabled:bg-gray-50 disabled:text-gray-400"
-                        >
-                          人物を削除
-                        </button>
-                      </div>
 
-                      <div className="mb-4">
-                        <h4 className="text-sm font-semibold text-gray-500 mb-2">📌 メモ</h4>
-                        {person.memos && person.memos.length > 0 ? (
-                          <ul className="space-y-2">
-                            {person.memos.map((memo) => (
-                              <li key={memo.id} className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded border border-gray-100 whitespace-pre-wrap flex justify-between items-start gap-4">
-                                <span className="flex-grow">{memo.content}</span>
-                                <button
-                                  onClick={() => handleDeleteMemo(memo.id)}
-                                  disabled={isSubmitting}
-                                  className="text-xs text-gray-400 hover:text-red-600 transition font-medium"
-                                >
-                                  削除
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-xs text-gray-400">メモはまだ登録されていません。</p>
-                        )}
-                      </div>
+                        <div className="mt-auto pt-3 flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="新しいメモを追加..."
+                            value={memoInputs[person.id] || ""}
+                            onChange={(e) => setMemoInputs({ ...memoInputs, [person.id]: e.target.value })}
+                            className="flex-grow px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddMemo(person.id);
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={() => handleAddMemo(person.id)}
+                            disabled={isSubmitting || !memoInputs[person.id]?.trim()}
+                            className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-1.5 rounded text-sm font-medium transition disabled:bg-gray-50 disabled:text-gray-400"
+                          >
+                            追加
+                          </button>
+                        </div>
 
-                      <div className="mt-auto pt-3 flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="新しいメモを追加..."
-                          value={memoInputs[person.id] || ""}
-                          onChange={(e) => setMemoInputs({ ...memoInputs, [person.id]: e.target.value })}
-                          className="flex-grow px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddMemo(person.id);
-                            }
-                          }}
-                        />
-                        <button
-                          onClick={() => handleAddMemo(person.id)}
-                          disabled={isSubmitting || !memoInputs[person.id]?.trim()}
-                          className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-1.5 rounded text-sm font-medium transition disabled:bg-gray-50 disabled:text-gray-400"
-                        >
-                          追加
-                        </button>
                       </div>
-
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
