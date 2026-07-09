@@ -30,9 +30,10 @@ export default function Home() {
   const [relationship, setRelationship] = useState("");
   
   const [memoInputs, setMemoInputs] = useState<{ [key: string]: string }>({});
-
-  // ★ 新規追加：現在選択されている関係性タブ（デフォルトは "ALL" = すべて）
   const [selectedTab, setSelectedTab] = useState<string>("ALL");
+
+  // ★ 新規追加：検索キーワードの状態管理
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -205,8 +206,6 @@ export default function Home() {
         setErrorMessage("人物の削除に失敗しました: " + error.message);
       } else {
         setSuccessMessage(`${personName} さんのデータを削除しました。`);
-        // 削除した人物の関係性タブを開いていた場合、データが消えてタブ自体もなくなる可能性があるため
-        // 安全のために一覧を再取得した後は "ALL" タブに戻すか状態を維持する
         await fetchPeople();
       }
     } catch (err) {
@@ -240,17 +239,28 @@ export default function Home() {
     }
   };
 
-  // 💡 登録データから存在するユニークな関係性（重複なし）を自動抽出する
   const uniqueRelationships = Array.from(
     new Set(people.map((p) => p.relationship).filter(Boolean))
   ) as string[];
 
-  // 💡 選択されたタブに応じて、画面に表示する人物をフィルタリングする
-  const filteredPeople = selectedTab === "ALL"
-    ? people
-    : people.filter((p) => p.relationship === selectedTab);
+  // ★ 修正・拡張：関係性タブ ＋ 検索キーワードの両方で人物をフィルタリングする
+  const filteredPeople = people.filter((person) => {
+    // 1. 関係性タブの条件チェック
+    const matchesTab = selectedTab === "ALL" || person.relationship === selectedTab;
 
-  // もし選択していた関係性のデータが削除等で0件になったら、自動的に「すべて」タブに戻す
+    // 2. 検索キーワードの条件チェック
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return matchesTab; // キーワードが空ならタブの条件だけで判定
+
+    // 人物名にキーワードが含まれるか
+    const matchesName = person.name.toLowerCase().includes(query);
+    // メモ一覧のなかにキーワードが含まれるメモがあるか
+    const matchesMemo = person.memos?.some((m) => m.content.toLowerCase().includes(query)) ?? false;
+
+    // タブの条件を満たし、かつ（名前またはメモにヒットする）データを残す
+    return matchesTab && (matchesName || matchesMemo);
+  });
+
   useEffect(() => {
     if (selectedTab !== "ALL" && !uniqueRelationships.includes(selectedTab)) {
       setSelectedTab("ALL");
@@ -335,8 +345,18 @@ export default function Home() {
             <div className="md:col-span-2">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">あなたが登録した人物一覧</h2>
               
+              {/* ★ 新規追加：キーワード検索窓 UI */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="🔍 名前またはメモのキーワードで探す..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
               {people.length > 0 && (
-                /* ★ 新規追加：関係性別切り替えタブUI */
                 <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-3">
                   <button
                     onClick={() => setSelectedTab("ALL")}
@@ -370,12 +390,13 @@ export default function Home() {
               {filteredPeople.length === 0 ? (
                 <div className="bg-white p-8 rounded-lg shadow-sm text-center border border-gray-200">
                   <p className="text-gray-500 text-sm">
-                    {selectedTab === "ALL" ? "データはまだありません。" : "この関係性の人物は登録されていません。"}
+                    {searchQuery.trim() 
+                      ? "キーワードに一致するデータは見つかりませんでした。" 
+                      : selectedTab === "ALL" ? "データはまだありません。" : "この関係性の人物は登録されていません。"}
                   </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-6">
-                  {/* 💡 表示対象を filteredPeople に変更 */}
                   {filteredPeople.map((person) => (
                     <div key={person.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex flex-col">
                       
