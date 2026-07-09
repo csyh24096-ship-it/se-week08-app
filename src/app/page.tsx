@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
 
-// メモデータの型定義を追加
 interface Memo {
   id: string;
   person_id: string;
@@ -12,13 +11,12 @@ interface Memo {
   created_at: string;
 }
 
-// 人物データの型定義を更新（memosを追加）
 interface Person {
   id: string;
   name: string;
   relationship: string | null;
   created_at: string;
-  memos?: Memo[]; // 👈 この人物に紐づくメモの配列
+  memos?: Memo[];
 }
 
 export default function Home() {
@@ -31,7 +29,6 @@ export default function Home() {
   const [name, setName] = useState("");
   const [relationship, setRelationship] = useState("");
   
-  // 各人物カードごとのメモ入力欄の状態を管理するためのオブジェクト
   const [memoInputs, setMemoInputs] = useState<{ [key: string]: string }>({});
 
   const [isLoading, setIsLoading] = useState(true);
@@ -61,12 +58,10 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 人物一覧と、それに紐づくメモを一緒に取得する
   const fetchPeople = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     
-    // 👈 select("*, memos(*)") とすることで、リレーション（紐づけ）されたメモも一括取得できます
     const { data, error } = await supabase
       .from("people")
       .select("*, memos(*)")
@@ -75,7 +70,6 @@ export default function Home() {
     if (error) {
       setErrorMessage("データの取得に失敗しました: " + error.message);
     } else if (data) {
-      // メモを作成日時順に並び替えてセット
       const formattedData = data.map(person => ({
         ...person,
         memos: person.memos?.sort((a: Memo, b: Memo) => 
@@ -159,7 +153,6 @@ export default function Home() {
     }
   };
 
-  // ★ 新規追加：メモを登録する処理
   const handleAddMemo = async (personId: string) => {
     const content = memoInputs[personId];
     if (!content || !content.trim()) return;
@@ -182,8 +175,59 @@ export default function Home() {
       if (error) {
         setErrorMessage("メモの追加に失敗しました: " + error.message);
       } else {
-        // 入力欄を空にして、データを再取得
         setMemoInputs({ ...memoInputs, [personId]: "" });
+        await fetchPeople();
+      }
+    } catch (err) {
+      setErrorMessage("予期せぬエラーが発生しました。");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ★ 新規追加：人物を削除する処理
+  const handleDeletePerson = async (personId: string, personName: string) => {
+    if (!confirm(`${personName} さんを削除しますか？\n（登録されているメモもすべて削除されます）`)) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const { error } = await supabase
+        .from("people")
+        .delete()
+        .eq("id", personId);
+
+      if (error) {
+        setErrorMessage("人物の削除に失敗しました: " + error.message);
+      } else {
+        setSuccessMessage(`${personName} さんのデータを削除しました。`);
+        await fetchPeople();
+      }
+    } catch (err) {
+      setErrorMessage("予期せぬエラーが発生しました。");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ★ 新規追加：メモを削除する処理
+  const handleDeleteMemo = async (memoId: string) => {
+    if (!confirm("このメモを削除しますか？")) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const { error } = await supabase
+        .from("memos")
+        .delete()
+        .eq("id", memoId);
+
+      if (error) {
+        setErrorMessage("メモの削除に失敗しました: " + error.message);
+      } else {
         await fetchPeople();
       }
     } catch (err) {
@@ -278,7 +322,8 @@ export default function Home() {
                 <div className="grid grid-cols-1 gap-6">
                   {people.map((person) => (
                     <div key={person.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                      {/* 人物の基本情報 */}
+                      
+                      {/* 人物の基本情報 ＋ 削除ボタン */}
                       <div className="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
                         <div>
                           <h3 className="text-lg font-bold text-gray-900">{person.name}</h3>
@@ -288,16 +333,32 @@ export default function Home() {
                             </span>
                           )}
                         </div>
+                        {/* 人物削除ボタン */}
+                        <button
+                          onClick={() => handleDeletePerson(person.id, person.name)}
+                          disabled={isSubmitting}
+                          className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium py-1 px-2.5 rounded transition disabled:bg-gray-50 disabled:text-gray-400"
+                        >
+                          人物を削除
+                        </button>
                       </div>
 
-                      {/* メモ一覧の表示 */}
+                      {/* メモ一覧の表示 ＋ メモ個別削除ボタン */}
                       <div className="mb-4">
                         <h4 className="text-sm font-semibold text-gray-500 mb-2">📌 メモ</h4>
                         {person.memos && person.memos.length > 0 ? (
                           <ul className="space-y-2">
                             {person.memos.map((memo) => (
-                              <li key={memo.id} className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded border border-gray-100 whitespace-pre-wrap">
-                                {memo.content}
+                              <li key={memo.id} className="group text-sm text-gray-700 bg-gray-50 p-2.5 rounded border border-gray-100 whitespace-pre-wrap flex justify-between items-start gap-4">
+                                <span className="flex-grow">{memo.content}</span>
+                                {/* メモ削除ボタン */}
+                                <button
+                                  onClick={() => handleDeleteMemo(memo.id)}
+                                  disabled={isSubmitting}
+                                  className="text-xs text-gray-400 hover:text-red-600 transition font-medium"
+                                >
+                                  削除
+                                </button>
                               </li>
                             ))}
                           </ul>
