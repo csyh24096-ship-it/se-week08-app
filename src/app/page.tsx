@@ -155,7 +155,7 @@ export default function Home() {
         }]);
 
       if (error) {
-        setErrorMessage("登録に失敗しました: " + error.message);
+        setErrorMessage("登録に失敗しました: " + error.message + " (詳細: " + (error.details || "なし") + ")");
       } else {
         setSuccessMessage(`${name} さんを新しく登録しました！`);
         setName("");
@@ -163,8 +163,8 @@ export default function Home() {
         setBirthday("");
         await fetchPeople();
       }
-    } catch (err) {
-      setErrorMessage("予期せぬエラーが発生しました。");
+    } catch (err: any) {
+      setErrorMessage("予期せぬエラーが発生しました: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -206,14 +206,14 @@ export default function Home() {
         .eq("id", personId);
 
       if (error) {
-        setErrorMessage("更新に失敗しました: " + error.message);
+        setErrorMessage("更新に失敗しました: " + error.message + " (詳細: " + (error.details || "なし") + ")");
       } else {
         setSuccessMessage("情報を更新しました！");
         setEditingPersonId(null);
         await fetchPeople();
       }
-    } catch (err) {
-      setErrorMessage("予期せぬエラーが発生しました。");
+    } catch (err: any) {
+      setErrorMessage("予期せぬエラーが発生しました: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -367,7 +367,6 @@ export default function Home() {
     <main className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8 border-b pb-4 border-gray-200">
-          {/* ★ 修正：タイトルを「人物メモアプリ」に変更 */}
           <h1 className="text-2xl font-bold text-gray-900">人物メモアプリ</h1>
           {user && (
             <div className="flex items-center gap-4">
@@ -381,7 +380,7 @@ export default function Home() {
 
         {errorMessage && (
           <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded shadow-sm">
-            <p className="text-xs">{errorMessage}</p>
+            <p className="text-xs font-mono">{errorMessage}</p>
           </div>
         )}
         {successMessage && (
@@ -581,7 +580,8 @@ export default function Home() {
 
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-5">
-                <h2 className="text-lg font-bold text-gray-800">カレンダー</h2>
+                {/* ★ 修正：タイトルを「📅 カレンダー」のみに変更 */}
+                <h2 className="text-lg font-bold text-gray-800">📅 カレンダー</h2>
                 <div className="flex items-center gap-2">
                   <button onClick={() => changeMonth(-1)} className="p-1.5 border rounded-md hover:bg-gray-50 text-sm font-bold">◀</button>
                   <span className="text-sm font-bold text-gray-700 min-w-[90px] text-center">
