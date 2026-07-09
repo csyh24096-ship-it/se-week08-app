@@ -581,8 +581,7 @@ export default function Home() {
 
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-5">
-                {/* ★ 修正：タイトルを「カレンダー（登録者全員）」に変更 */}
-                <h2 className="text-lg font-bold text-gray-800">📅 カレンダー（登録者全員）</h2>
+                <h2 className="text-lg font-bold text-gray-800">カレンダー</h2>
                 <div className="flex items-center gap-2">
                   <button onClick={() => changeMonth(-1)} className="p-1.5 border rounded-md hover:bg-gray-50 text-sm font-bold">◀</button>
                   <span className="text-sm font-bold text-gray-700 min-w-[90px] text-center">
