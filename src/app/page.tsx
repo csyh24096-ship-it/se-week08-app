@@ -367,7 +367,8 @@ export default function Home() {
     <main className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8 border-b pb-4 border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">身近な人 メモアプリ</h1>
+          {/* ★ 修正：タイトルを「人物メモアプリ」に変更 */}
+          <h1 className="text-2xl font-bold text-gray-900">人物メモアプリ</h1>
           {user && (
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600 bg-gray-200 px-3 py-1 rounded">👤 {user.email}</span>
@@ -412,12 +413,9 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          /* ★ 修正：レイアウト構造を縦並び（下部カレンダー配置）に変更 */
           <div className="space-y-10">
             
-            {/* 上部：登録フォーム ＆ 人物一覧 の2カラム構成 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* 左側：新規登録フォーム */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-fit">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">新しい人物を登録</h2>
                 <form onSubmit={handlePersonSubmit} className="space-y-4">
@@ -439,7 +437,6 @@ export default function Home() {
                 </form>
               </div>
 
-              {/* 右側：人物一覧 */}
               <div className="md:col-span-2">
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">あなたが登録した人物一覧</h2>
                 
@@ -582,10 +579,10 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ★ 修正：カレンダーセクションを画面下部（横幅いっぱいのエリア）へ移動 */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-5">
-                <h2 className="text-lg font-bold text-gray-800">📅 誕生日カレンダー（登録者全員）</h2>
+                {/* ★ 修正：タイトルを「カレンダー（登録者全員）」に変更 */}
+                <h2 className="text-lg font-bold text-gray-800">📅 カレンダー（登録者全員）</h2>
                 <div className="flex items-center gap-2">
                   <button onClick={() => changeMonth(-1)} className="p-1.5 border rounded-md hover:bg-gray-50 text-sm font-bold">◀</button>
                   <span className="text-sm font-bold text-gray-700 min-w-[90px] text-center">
@@ -595,7 +592,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 曜日ヘッダー */}
               <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500 mb-1">
                 <div className="text-red-500 py-1 bg-gray-50 rounded">日</div>
                 <div className="py-1 bg-gray-50 rounded">月</div>
@@ -606,7 +602,6 @@ export default function Home() {
                 <div className="text-blue-500 py-1 bg-gray-50 rounded">土</div>
               </div>
 
-              {/* カレンダーマス目 */}
               <div className="grid grid-cols-7 gap-1.5">
                 {getCalendarDays().map((day, idx) => {
                   if (day === null) {
