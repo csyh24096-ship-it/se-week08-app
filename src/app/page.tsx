@@ -374,7 +374,7 @@ export default function Home() {
     <main className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8 border-b pb-4 border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">身近な人 メモアプリ</h1>
+          <h1 className="text-2xl font-bold text-gray-900">人物メモアプリ</h1>
           {user && (
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600 bg-gray-200 px-3 py-1 rounded">👤 {user.email}</span>
